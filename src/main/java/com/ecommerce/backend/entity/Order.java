@@ -12,6 +12,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Positive;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "Orders")
 public class Order {
@@ -24,9 +26,11 @@ public class Order {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "product_id")
-private Product product;
+
+    // Many Orders can belong to one Product
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
 
     @Positive(message = "Quantity must be greater than 0")
     private int quantity;
@@ -35,6 +39,8 @@ private Product product;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
+
+    private LocalDateTime createdAt;
 
     public Order() {
     }
@@ -56,12 +62,12 @@ private Product product;
     }
 
     public Product getProduct() {
-    return product;
-}
+        return product;
+    }
 
-public void setProduct(Product product) {
-    this.product = product;
-}
+    public void setProduct(Product product) {
+        this.product = product;
+    }
 
     public int getQuantity() {
         return quantity;
@@ -85,5 +91,13 @@ public void setProduct(Product product) {
 
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

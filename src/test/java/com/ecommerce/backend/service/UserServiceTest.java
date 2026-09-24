@@ -1,6 +1,5 @@
 package com.ecommerce.backend.service;
 
-
 import com.ecommerce.backend.dto.LoginResponseDTO;
 import com.ecommerce.backend.dto.UserDTO;
 import com.ecommerce.backend.dto.UserResponseDTO;
@@ -223,4 +222,151 @@ void getUserById_shouldThrowExceptionWhenUserNotFound() {
             () -> userService.getUserById(99L)
     );
 }
+// Test 8: Get All Users
+@Test
+void getAllUsers_shouldReturnAllUsers() {
+
+    User user1 = new User();
+
+    user1.setId(1L);
+    user1.setName("Test User 1");
+    user1.setEmail("user1@example.com");
+    user1.setRole("USER");
+
+
+    User user2 = new User();
+
+    user2.setId(2L);
+    user2.setName("Test User 2");
+    user2.setEmail("user2@example.com");
+    user2.setRole("USER");
+
+
+    when(userRepository.findAll())
+            .thenReturn(java.util.List.of(user1, user2));
+
+
+    java.util.List<UserResponseDTO> response =
+            userService.getAllUsers();
+
+
+    assertEquals(2, response.size());
+
+    assertEquals(1L, response.get(0).getId());
+    assertEquals("Test User 1", response.get(0).getName());
+    assertEquals("user1@example.com", response.get(0).getEmail());
+
+    assertEquals(2L, response.get(1).getId());
+    assertEquals("Test User 2", response.get(1).getName());
+    assertEquals("user2@example.com", response.get(1).getEmail());
+}
+// Test 9: Update User
+@Test
+void updateUser_shouldUpdateAndReturnResponse() {
+
+    UserDTO userDTO = new UserDTO();
+
+    userDTO.setName("Updated User");
+    userDTO.setEmail("updated@example.com");
+    userDTO.setPassword("newpassword123");
+
+
+    User existingUser = new User();
+
+    existingUser.setId(1L);
+    existingUser.setName("Old User");
+    existingUser.setEmail("old@example.com");
+    existingUser.setPassword("oldEncodedPassword");
+    existingUser.setRole("USER");
+
+
+    User updatedUser = new User();
+
+    updatedUser.setId(1L);
+    updatedUser.setName("Updated User");
+    updatedUser.setEmail("updated@example.com");
+    updatedUser.setPassword("newEncodedPassword");
+    updatedUser.setRole("USER");
+
+
+    when(userRepository.findById(1L))
+            .thenReturn(Optional.of(existingUser));
+
+    when(userRepository.existsByEmail("updated@example.com"))
+            .thenReturn(false);
+
+    when(passwordEncoder.encode("newpassword123"))
+            .thenReturn("newEncodedPassword");
+
+    when(userRepository.save(any(User.class)))
+            .thenReturn(updatedUser);
+
+
+    UserResponseDTO response =
+            userService.updateUser(1L, userDTO);
+
+
+    assertEquals(1L, response.getId());
+    assertEquals("Updated User", response.getName());
+    assertEquals("updated@example.com", response.getEmail());
+    assertEquals("USER", response.getRole());
+}
+// Test 10: Update User - Duplicate Email
+@Test
+void updateUser_shouldThrowExceptionWhenEmailAlreadyExists() {
+
+    UserDTO userDTO = new UserDTO();
+
+    userDTO.setName("Updated User");
+    userDTO.setEmail("existing@example.com");
+    userDTO.setPassword("newpassword123");
+
+
+    User existingUser = new User();
+
+    existingUser.setId(1L);
+    existingUser.setName("Old User");
+    existingUser.setEmail("old@example.com");
+    existingUser.setPassword("oldEncodedPassword");
+    existingUser.setRole("USER");
+
+
+    when(userRepository.findById(1L))
+            .thenReturn(Optional.of(existingUser));
+
+    when(userRepository.existsByEmail("existing@example.com"))
+            .thenReturn(true);
+
+
+    assertThrows(
+            EmailAlreadyExistsException.class,
+            () -> userService.updateUser(1L, userDTO)
+    );
+}
+// Test 11: Delete User
+@Test
+void deleteUser_shouldDeleteUser() {
+
+    when(userRepository.existsById(1L))
+            .thenReturn(true);
+
+    userService.deleteUser(1L);
+
+    org.mockito.Mockito.verify(
+            userRepository
+    ).deleteById(1L);
+}
+// Test 12: Delete User - User Not Found
+@Test
+void deleteUser_shouldThrowExceptionWhenUserNotFound() {
+
+    when(userRepository.existsById(99L))
+            .thenReturn(false);
+
+    assertThrows(
+            UserNotFoundException.class,
+            () -> userService.deleteUser(99L)
+    );
+}
+
 }

@@ -3,6 +3,9 @@ package com.ecommerce.backend.security;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +15,9 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtUtil.class);
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -28,7 +34,12 @@ public class JwtUtil {
     // Generate JWT Token with email and role
     public String generateToken(String email, String role) {
 
-        return Jwts.builder()
+        logger.info(
+                "Generating JWT token for user: {} with role: {}",
+                email,
+                role);
+
+        String token = Jwts.builder()
                 .subject(email)
                 .claim("role", role)
                 .issuedAt(new Date())
@@ -38,10 +49,18 @@ public class JwtUtil {
                 )
                 .signWith(getSigningKey())
                 .compact();
+
+        logger.info(
+                "JWT token generated successfully for user: {}",
+                email);
+
+        return token;
     }
 
     // Extract email from JWT token
     public String extractEmail(String token) {
+
+        logger.debug("Extracting email from JWT token");
 
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -53,6 +72,8 @@ public class JwtUtil {
 
     // Extract role from JWT token
     public String extractRole(String token) {
+
+        logger.debug("Extracting role from JWT token");
 
         return Jwts.parser()
                 .verifyWith(getSigningKey())

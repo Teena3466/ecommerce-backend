@@ -1,13 +1,13 @@
 package com.ecommerce.backend.service;
 
 import com.ecommerce.backend.entity.Cart;
-import com.ecommerce.backend.entity.OrderStatus;
 import com.ecommerce.backend.entity.Order;
+import com.ecommerce.backend.entity.OrderStatus;
 import com.ecommerce.backend.entity.Product;
 import com.ecommerce.backend.entity.User;
+import com.ecommerce.backend.repository.CartRepository;
 import com.ecommerce.backend.repository.OrderRepository;
 import com.ecommerce.backend.repository.ProductRepository;
-import com.ecommerce.backend.repository.CartRepository;
 import com.ecommerce.backend.exception.OrderNotFoundException;
 import com.ecommerce.backend.exception.ProductNotFoundException;
 
@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,7 +43,10 @@ public class OrderService {
         this.cartRepository = cartRepository;
     }
 
-    // Create Order
+    // =========================================================
+    // CREATE SINGLE PRODUCT ORDER
+    // =========================================================
+
     @Transactional
     public Order createOrder(
             String email,
@@ -51,51 +55,60 @@ public class OrderService {
 
         logger.info(
                 "Creating order - email: {}, productId: {}, quantity: {}",
-                email, productId, quantity);
+                email,
+                productId,
+                quantity
+        );
 
         if (productId == null) {
             logger.warn("Order creation failed. Product ID is null");
-
             throw new IllegalArgumentException(
-                    "Product ID is required");
+                    "Product ID is required"
+            );
         }
 
         if (quantity <= 0) {
             logger.warn(
                     "Order creation failed. Invalid quantity: {}",
-                    quantity);
+                    quantity
+            );
 
             throw new IllegalArgumentException(
-                    "Quantity must be greater than 0");
+                    "Quantity must be greater than 0"
+            );
         }
 
         User user = userService.findByEmail(email);
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> {
-
                     logger.warn(
                             "Order creation failed. Product not found: {}",
-                            productId);
+                            productId
+                    );
 
                     return new ProductNotFoundException(
-                            "Product not found");
+                            "Product not found"
+                    );
                 });
 
         if (product.getQuantity() < quantity) {
             logger.warn(
                     "Order creation failed. Insufficient stock for product: {}",
-                    productId);
+                    productId
+            );
 
             throw new IllegalArgumentException(
-                    "Insufficient stock");
+                    "Insufficient stock"
+            );
         }
 
         double totalPrice =
                 product.getPrice() * quantity;
 
         product.setQuantity(
-                product.getQuantity() - quantity);
+                product.getQuantity() - quantity
+        );
 
         productRepository.save(product);
 
@@ -106,21 +119,30 @@ public class OrderService {
         order.setQuantity(quantity);
         order.setTotalPrice(totalPrice);
         order.setStatus(OrderStatus.PLACED);
+        order.setCreatedAt(LocalDateTime.now());
 
-        Order savedOrder = orderRepository.save(order);
+        Order savedOrder =
+                orderRepository.save(order);
 
         logger.info(
                 "Order created successfully with id: {}",
-                savedOrder.getId());
+                savedOrder.getId()
+        );
 
         return savedOrder;
     }
 
-    // Checkout Cart
+    // =========================================================
+    // CHECKOUT CART
+    // =========================================================
+
     @Transactional
     public List<Order> checkoutCart(String email) {
 
-        logger.info("Starting cart checkout for user: {}", email);
+        logger.info(
+                "Starting cart checkout for user: {}",
+                email
+        );
 
         User user = userService.findByEmail(email);
 
@@ -128,57 +150,74 @@ public class OrderService {
                 cartRepository.findByUserId(user.getId());
 
         if (cartItems.isEmpty()) {
-
             logger.warn(
                     "Checkout failed. Cart is empty for user: {}",
-                    email);
+                    email
+            );
 
             throw new IllegalArgumentException(
-                    "Cart is empty");
+                    "Cart is empty"
+            );
         }
+
+        // Check stock first
 
         for (Cart cart : cartItems) {
 
-            Product product = productRepository
-                    .findById(cart.getProductId())
-                    .orElseThrow(() -> {
+            Product product =
+                    productRepository
+                            .findById(cart.getProductId())
+                            .orElseThrow(() -> {
 
-                        logger.warn(
-                                "Checkout failed. Product not found: {}",
-                                cart.getProductId());
+                                logger.warn(
+                                        "Checkout failed. Product not found: {}",
+                                        cart.getProductId()
+                                );
 
-                        return new ProductNotFoundException(
-                                "Product not found");
-                    });
+                                return new ProductNotFoundException(
+                                        "Product not found"
+                                );
+                            });
 
-            if (product.getQuantity() < cart.getQuantity()) {
+            if (product.getQuantity()
+                    < cart.getQuantity()) {
 
                 logger.warn(
                         "Checkout failed. Insufficient stock for product: {}",
-                        product.getName());
+                        product.getName()
+                );
 
                 throw new IllegalArgumentException(
                         "Insufficient stock for product: "
-                                + product.getName());
+                                + product.getName()
+                );
             }
         }
 
-        List<Order> orders = new ArrayList<>();
+        List<Order> orders =
+                new ArrayList<>();
+
+        // Create orders
 
         for (Cart cart : cartItems) {
 
-            Product product = productRepository
-                    .findById(cart.getProductId())
-                    .orElseThrow(() ->
-                            new ProductNotFoundException(
-                                    "Product not found"));
+            Product product =
+                    productRepository
+                            .findById(cart.getProductId())
+                            .orElseThrow(() ->
+                                    new ProductNotFoundException(
+                                            "Product not found"
+                                    )
+                            );
 
             double totalPrice =
-                    product.getPrice() * cart.getQuantity();
+                    product.getPrice()
+                            * cart.getQuantity();
 
             product.setQuantity(
                     product.getQuantity()
-                            - cart.getQuantity());
+                            - cart.getQuantity()
+            );
 
             productRepository.save(product);
 
@@ -189,6 +228,7 @@ public class OrderService {
             order.setQuantity(cart.getQuantity());
             order.setTotalPrice(totalPrice);
             order.setStatus(OrderStatus.PLACED);
+            order.setCreatedAt(LocalDateTime.now());
 
             Order savedOrder =
                     orderRepository.save(order);
@@ -197,19 +237,75 @@ public class OrderService {
 
             logger.info(
                     "Order created from cart with id: {}",
-                    savedOrder.getId());
+                    savedOrder.getId()
+            );
         }
+
+        // Clear cart
 
         cartRepository.deleteAll(cartItems);
 
         logger.info(
                 "Cart checkout completed successfully for user: {}",
-                email);
+                email
+        );
 
         return orders;
     }
 
-    // Get Orders By User
+    // =========================================================
+    // GET ALL ORDERS - ADMIN
+    // =========================================================
+
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+
+        logger.info("Fetching all orders");
+
+        List<Order> orders =
+                orderRepository.findAll();
+
+        logger.info(
+                "Found {} total orders",
+                orders.size()
+        );
+
+        return orders;
+    }
+
+    // =========================================================
+    // GET MY ORDERS
+    // =========================================================
+
+    @Transactional(readOnly = true)
+    public List<Order> getMyOrders(String email) {
+
+        logger.info(
+                "Fetching orders for logged-in user: {}",
+                email
+        );
+
+        User user =
+                userService.findByEmail(email);
+
+        List<Order> orders =
+                orderRepository.findByUserId(
+                        user.getId()
+                );
+
+        logger.info(
+                "Found {} orders for user: {}",
+                orders.size(),
+                email
+        );
+
+        return orders;
+    }
+
+    // =========================================================
+    // GET ORDERS BY USER ID
+    // =========================================================
+
     @Transactional(readOnly = true)
     public List<Order> getOrdersByUser(
             Long userId,
@@ -217,7 +313,9 @@ public class OrderService {
 
         logger.info(
                 "Fetching orders for userId: {} by email: {}",
-                userId, email);
+                userId,
+                email
+        );
 
         User loggedInUser =
                 userService.findByEmail(email);
@@ -227,16 +325,21 @@ public class OrderService {
 
             logger.warn(
                     "Unauthorized order access attempt by user: {}",
-                    email);
+                    email
+            );
 
             throw new IllegalArgumentException(
-                    "You can only view your own orders");
+                    "You can only view your own orders"
+            );
         }
 
         return orderRepository.findByUserId(userId);
     }
 
-    // Cancel Order
+    // =========================================================
+    // CANCEL ORDER
+    // =========================================================
+
     @Transactional
     public void cancelOrder(
             Long orderId,
@@ -244,21 +347,26 @@ public class OrderService {
 
         logger.info(
                 "Cancelling order: {} by user: {}",
-                orderId, email);
+                orderId,
+                email
+        );
 
         User loggedInUser =
                 userService.findByEmail(email);
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> {
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() -> {
 
-                    logger.warn(
-                            "Cancel failed. Order not found: {}",
-                            orderId);
+                            logger.warn(
+                                    "Cancel failed. Order not found: {}",
+                                    orderId
+                            );
 
-                    return new OrderNotFoundException(
-                            "Order not found");
-                });
+                            return new OrderNotFoundException(
+                                    "Order not found"
+                            );
+                        });
 
         if ("USER".equals(loggedInUser.getRole())
                 && !loggedInUser.getId()
@@ -266,53 +374,69 @@ public class OrderService {
 
             logger.warn(
                     "Unauthorized cancellation attempt for order: {}",
-                    orderId);
+                    orderId
+            );
 
             throw new IllegalArgumentException(
-                    "You can only cancel your own orders");
+                    "You can only cancel your own orders"
+            );
         }
 
-        if (OrderStatus.CANCELLED.equals(order.getStatus())) {
+        if (OrderStatus.CANCELLED
+                .equals(order.getStatus())) {
 
             logger.warn(
                     "Order {} is already cancelled",
-                    orderId);
+                    orderId
+            );
 
             throw new IllegalArgumentException(
-                    "Order is already cancelled");
+                    "Order is already cancelled"
+            );
         }
 
-        if (OrderStatus.DELIVERED.equals(order.getStatus())) {
+        if (OrderStatus.DELIVERED
+                .equals(order.getStatus())) {
 
             logger.warn(
                     "Cannot cancel delivered order: {}",
-                    orderId);
+                    orderId
+            );
 
             throw new IllegalArgumentException(
-                    "Delivered order cannot be cancelled");
+                    "Delivered order cannot be cancelled"
+            );
         }
 
-        Product product = order.getProduct();
+        Product product =
+                order.getProduct();
 
         if (product != null) {
 
             product.setQuantity(
                     product.getQuantity()
-                            + order.getQuantity());
+                            + order.getQuantity()
+            );
 
             productRepository.save(product);
         }
 
-        order.setStatus(OrderStatus.CANCELLED);
+        order.setStatus(
+                OrderStatus.CANCELLED
+        );
 
         orderRepository.save(order);
 
         logger.info(
                 "Order cancelled successfully: {}",
-                orderId);
+                orderId
+        );
     }
 
-    // Update Order Status
+    // =========================================================
+    // UPDATE ORDER STATUS
+    // =========================================================
+
     @Transactional
     public Order updateOrderStatus(
             Long orderId,
@@ -320,37 +444,48 @@ public class OrderService {
 
         logger.info(
                 "Updating order {} status to {}",
-                orderId, status);
+                orderId,
+                status
+        );
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> {
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() -> {
 
-                    logger.warn(
-                            "Status update failed. Order not found: {}",
-                            orderId);
+                            logger.warn(
+                                    "Status update failed. Order not found: {}",
+                                    orderId
+                            );
 
-                    return new OrderNotFoundException(
-                            "Order not found");
-                });
+                            return new OrderNotFoundException(
+                                    "Order not found"
+                            );
+                        });
 
-        if (OrderStatus.CANCELLED.equals(order.getStatus())) {
+        if (OrderStatus.CANCELLED
+                .equals(order.getStatus())) {
 
             logger.warn(
                     "Cannot update status of cancelled order: {}",
-                    orderId);
+                    orderId
+            );
 
             throw new IllegalArgumentException(
-                    "Cancelled order status cannot be changed");
+                    "Cancelled order status cannot be changed"
+            );
         }
 
-        if (OrderStatus.DELIVERED.equals(order.getStatus())) {
+        if (OrderStatus.DELIVERED
+                .equals(order.getStatus())) {
 
             logger.warn(
                     "Cannot update status of delivered order: {}",
-                    orderId);
+                    orderId
+            );
 
             throw new IllegalArgumentException(
-                    "Delivered order status cannot be changed");
+                    "Delivered order status cannot be changed"
+            );
         }
 
         order.setStatus(status);
@@ -360,7 +495,9 @@ public class OrderService {
 
         logger.info(
                 "Order status updated successfully. Order: {}, status: {}",
-                orderId, status);
+                orderId,
+                status
+        );
 
         return updatedOrder;
     }

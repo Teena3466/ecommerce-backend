@@ -430,4 +430,138 @@ void cancelOrder_shouldThrowExceptionWhenUserCancelsAnotherUsersOrder() {
             )
     );
 }
+// Test 13: Cancel Order - Already Cancelled
+@Test
+void cancelOrder_shouldThrowExceptionWhenOrderIsAlreadyCancelled() {
+
+    User user = new User();
+    user.setId(1L);
+    user.setEmail("test@example.com");
+    user.setRole("USER");
+
+    Order order = new Order();
+    order.setId(1L);
+    order.setUser(user);
+    order.setStatus(OrderStatus.CANCELLED);
+
+    when(userService.findByEmail("test@example.com"))
+            .thenReturn(user);
+
+    when(orderRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(order));
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> orderService.cancelOrder(
+                    1L,
+                    "test@example.com"
+            )
+    );
+}
+// Test 14: Cancel Order - Delivered Order
+@Test
+void cancelOrder_shouldThrowExceptionWhenOrderIsDelivered() {
+
+    User user = new User();
+    user.setId(1L);
+    user.setEmail("test@example.com");
+    user.setRole("USER");
+
+    Order order = new Order();
+    order.setId(1L);
+    order.setUser(user);
+    order.setStatus(OrderStatus.DELIVERED);
+
+    when(userService.findByEmail("test@example.com"))
+            .thenReturn(user);
+
+    when(orderRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(order));
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> orderService.cancelOrder(
+                    1L,
+                    "test@example.com"
+            )
+    );
+}
+// Test 15: Update Order Status - Success
+@Test
+void updateOrderStatus_shouldUpdateStatusSuccessfully() {
+
+    Order order = new Order();
+    order.setId(1L);
+    order.setStatus(OrderStatus.PLACED);
+
+    when(orderRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(order));
+
+    when(orderRepository.save(any(Order.class)))
+            .thenReturn(order);
+
+    Order response = orderService.updateOrderStatus(
+            1L,
+            OrderStatus.SHIPPED
+    );
+
+    assertEquals(OrderStatus.SHIPPED, response.getStatus());
+
+    org.mockito.Mockito.verify(orderRepository)
+            .save(order);
+}
+// Test 16: Update Order Status - Order Not Found
+@Test
+void updateOrderStatus_shouldThrowExceptionWhenOrderNotFound() {
+
+    when(orderRepository.findById(99L))
+            .thenReturn(java.util.Optional.empty());
+
+    assertThrows(
+            com.ecommerce.backend.exception.OrderNotFoundException.class,
+            () -> orderService.updateOrderStatus(
+                    99L,
+                    OrderStatus.SHIPPED
+            )
+    );
+}
+// Test 17: Update Order Status - Cancelled Order
+@Test
+void updateOrderStatus_shouldThrowExceptionWhenOrderIsCancelled() {
+
+    Order order = new Order();
+    order.setId(1L);
+    order.setStatus(OrderStatus.CANCELLED);
+
+    when(orderRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(order));
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> orderService.updateOrderStatus(
+                    1L,
+                    OrderStatus.SHIPPED
+            )
+    );
+}
+// Test 18: Update Order Status - Delivered Order
+@Test
+void updateOrderStatus_shouldThrowExceptionWhenOrderIsDelivered() {
+
+    Order order = new Order();
+    order.setId(1L);
+    order.setStatus(OrderStatus.DELIVERED);
+
+    when(orderRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(order));
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> orderService.updateOrderStatus(
+                    1L,
+                    OrderStatus.SHIPPED
+            )
+    );
+}
+
 }

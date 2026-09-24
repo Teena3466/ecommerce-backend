@@ -9,12 +9,17 @@ import com.ecommerce.backend.exception.ProductNotFoundException;
 import com.ecommerce.backend.repository.CartRepository;
 import com.ecommerce.backend.repository.ProductRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class CartService {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(CartService.class);
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
@@ -35,15 +40,31 @@ public class CartService {
             String email,
             CartDTO cartDTO) {
 
+        logger.info(
+                "Adding product {} to cart for user: {}",
+                cartDTO.getProductId(),
+                email);
+
         User user = userService.findByEmail(email);
 
         Product product = productRepository
                 .findById(cartDTO.getProductId())
-                .orElseThrow(() ->
-                        new ProductNotFoundException(
-                                "Product not found"));
+                .orElseThrow(() -> {
+
+                    logger.warn(
+                            "Product not found while adding to cart: {}",
+                            cartDTO.getProductId());
+
+                    return new ProductNotFoundException(
+                            "Product not found");
+                });
 
         if (product.getQuantity() < cartDTO.getQuantity()) {
+
+            logger.warn(
+                    "Insufficient stock for product: {}",
+                    cartDTO.getProductId());
+
             throw new IllegalArgumentException(
                     "Insufficient stock");
         }
@@ -61,6 +82,11 @@ public class CartService {
                             + cartDTO.getQuantity();
 
             if (product.getQuantity() < newQuantity) {
+
+                logger.warn(
+                        "Insufficient stock while increasing cart quantity. Product: {}",
+                        cartDTO.getProductId());
+
                 throw new IllegalArgumentException(
                         "Insufficient stock");
             }
@@ -79,12 +105,20 @@ public class CartService {
         Cart savedCart =
                 cartRepository.save(cart);
 
+        logger.info(
+                "Product added to cart successfully. Cart id: {}",
+                savedCart.getId());
+
         return convertToResponse(savedCart);
     }
 
     // Get user's cart
     public List<CartResponseDTO> getCart(
             String email) {
+
+        logger.info(
+                "Fetching cart for user: {}",
+                email);
 
         User user = userService.findByEmail(email);
 
@@ -101,7 +135,18 @@ public class CartService {
             Long cartId,
             int quantity) {
 
+        logger.info(
+                "Updating cart {} quantity to {} for user: {}",
+                cartId,
+                quantity,
+                email);
+
         if (quantity <= 0) {
+
+            logger.warn(
+                    "Invalid cart quantity: {}",
+                    quantity);
+
             throw new IllegalArgumentException(
                     "Quantity must be greater than 0");
         }
@@ -110,22 +155,45 @@ public class CartService {
 
         Cart cart = cartRepository
                 .findById(cartId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Cart item not found"));
+                .orElseThrow(() -> {
+
+                    logger.warn(
+                            "Cart item not found: {}",
+                            cartId);
+
+                    return new IllegalArgumentException(
+                            "Cart item not found");
+                });
 
         if (!user.getId().equals(cart.getUserId())) {
+
+            logger.warn(
+                    "Unauthorized cart update attempt. User: {}, cartId: {}",
+                    email,
+                    cartId);
+
             throw new IllegalArgumentException(
                     "You can only update your own cart");
         }
 
         Product product = productRepository
                 .findById(cart.getProductId())
-                .orElseThrow(() ->
-                        new ProductNotFoundException(
-                                "Product not found"));
+                .orElseThrow(() -> {
+
+                    logger.warn(
+                            "Product not found while updating cart: {}",
+                            cart.getProductId());
+
+                    return new ProductNotFoundException(
+                            "Product not found");
+                });
 
         if (product.getQuantity() < quantity) {
+
+            logger.warn(
+                    "Insufficient stock while updating cart: {}",
+                    cart.getProductId());
+
             throw new IllegalArgumentException(
                     "Insufficient stock");
         }
@@ -135,6 +203,10 @@ public class CartService {
         Cart updatedCart =
                 cartRepository.save(cart);
 
+        logger.info(
+                "Cart updated successfully. Cart id: {}",
+                cartId);
+
         return convertToResponse(updatedCart);
     }
 
@@ -143,20 +215,41 @@ public class CartService {
             String email,
             Long cartId) {
 
+        logger.info(
+                "Removing cart item {} for user: {}",
+                cartId,
+                email);
+
         User user = userService.findByEmail(email);
 
         Cart cart = cartRepository
                 .findById(cartId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Cart item not found"));
+                .orElseThrow(() -> {
+
+                    logger.warn(
+                            "Cart item not found: {}",
+                            cartId);
+
+                    return new IllegalArgumentException(
+                            "Cart item not found");
+                });
 
         if (!user.getId().equals(cart.getUserId())) {
+
+            logger.warn(
+                    "Unauthorized cart removal attempt. User: {}, cartId: {}",
+                    email,
+                    cartId);
+
             throw new IllegalArgumentException(
                     "You can only remove your own cart item");
         }
 
         cartRepository.delete(cart);
+
+        logger.info(
+                "Cart item removed successfully: {}",
+                cartId);
     }
 
     // Convert Cart to Response DTO

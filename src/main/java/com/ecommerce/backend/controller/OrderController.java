@@ -1,5 +1,6 @@
 package com.ecommerce.backend.controller;
 
+import com.ecommerce.backend.dto.OrderDTO;
 import com.ecommerce.backend.entity.Order;
 import com.ecommerce.backend.entity.OrderStatus;
 import com.ecommerce.backend.service.OrderService;
@@ -21,13 +22,17 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    // Create single-product order
+    // =========================================================
+    // CREATE SINGLE PRODUCT ORDER
+    // =========================================================
+
     @PostMapping
     public Order createOrder(
-            @Valid @RequestBody com.ecommerce.backend.dto.OrderDTO orderDTO,
+            @Valid @RequestBody OrderDTO orderDTO,
             Authentication authentication) {
 
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
         return orderService.createOrder(
                 email,
@@ -36,23 +41,54 @@ public class OrderController {
         );
     }
 
-    // Checkout cart
+    // =========================================================
+    // CHECKOUT CART
+    // =========================================================
+
     @PostMapping("/checkout")
     public List<Order> checkoutCart(
             Authentication authentication) {
 
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
         return orderService.checkoutCart(email);
     }
 
-    // Get orders by user
+    // =========================================================
+    // GET ALL ORDERS - ADMIN
+    // =========================================================
+
+    @GetMapping
+    public List<Order> getAllOrders() {
+        return orderService.getAllOrders();
+    }
+
+    // =========================================================
+    // GET MY ORDERS
+    // =========================================================
+
+    @GetMapping("/my-orders")
+    public List<Order> getMyOrders(
+            Authentication authentication) {
+
+        String email =
+                authentication.getName();
+
+        return orderService.getMyOrders(email);
+    }
+
+    // =========================================================
+    // GET ORDERS BY USER ID
+    // =========================================================
+
     @GetMapping("/user/{userId}")
     public List<Order> getOrdersByUser(
             @PathVariable Long userId,
             Authentication authentication) {
 
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
         return orderService.getOrdersByUser(
                 userId,
@@ -60,13 +96,17 @@ public class OrderController {
         );
     }
 
-    // Cancel order
+    // =========================================================
+    // CANCEL ORDER
+    // =========================================================
+
     @DeleteMapping("/{orderId}")
     public String cancelOrder(
             @PathVariable Long orderId,
             Authentication authentication) {
 
-        String email = authentication.getName();
+        String email =
+                authentication.getName();
 
         orderService.cancelOrder(
                 orderId,
@@ -76,7 +116,10 @@ public class OrderController {
         return "Order cancelled successfully";
     }
 
-    // Update order status
+    // =========================================================
+    // UPDATE ORDER STATUS
+    // =========================================================
+
     @PutMapping("/{orderId}/status")
     public Order updateOrderStatus(
             @PathVariable Long orderId,
